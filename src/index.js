@@ -1,5 +1,12 @@
+import Caver from "caver-js";
 
+const cav = new Caver("https://api.baobab.klaytn.net:8651");
 const App = {
+  auth : {
+    accessType : 'keystore',
+    keystore : '',
+    password: ''
+  },
 
   start: async function () {
 
@@ -7,14 +14,42 @@ const App = {
 
   handleImport: async function () {
 
+    const fileReader = new FileReader();
+    fileReader.readAsText(event.target.files[0])
+    fileReader.onload = (event) => {
+      try{
+        if(!this.checkValidKeystore(event.target.result)){
+          $('#message').text("유효하지 않은 keystore")
+          return;
+        }
+        this.auth.keystore = event.target.result;
+        $('#message').text('keystore 유효함')
+        document.querySelector("#input-password").focus();
+      }catch(event){
+        $('#message').text("유효하지 않은 keystore")
+        return;
+      }
+    }
   },
 
   handlePassword: async function () {
-
+    this.auth.password = event.target.value;
   },
 
   handleLogin: async function () {
+    if (this.auth.accessType === 'keystore'){
+      try{
+        console.log(cav.klay.accounts.decrypt)
+        console.log(this.auth.password)
+        const privateKey = cav.klay.accounts.decrypt(this.auth.keystore, this.auth.password).privateKey;
+        console.log(privateKey)
+        this.integrateWallet(privateKey)
 
+      }catch (e){
+        console.log(e)
+        $('#message').text("비밀번호를 확인해주세요")
+      }
+    }
   },
 
   handleLogout: async function () {
@@ -46,11 +81,18 @@ const App = {
   },
 
   checkValidKeystore: function (keystore) {
-
+    const parsedKeystore = JSON.parse(keystore)
+    const isValidKeystore = parsedKeystore.version && parsedKeystore.id && parsedKeystore.address && parsedKeystore.crypto;
+    return isValidKeystore;
   },
 
   integrateWallet: function (privateKey) {
-
+    console.log("asdf")
+    const walletInstance = cav.klay.accounts.privateKeyToAccount(privateKey);
+    cav.klay.accounts.wallet.add(walletInstance)
+    console.log(walletInstance)
+    sessionStorage.setItem('walletInstance' , JSON.stringify(walletInstance))
+    this.changeUI(walletInstance);
   },
 
   reset: function () {
@@ -58,7 +100,12 @@ const App = {
   },
 
   changeUI: async function (walletInstance) {
-
+    console.log("enter cui")
+    console.log(walletInstance)
+    $('#loginModal').modal('hide')
+    $('#login').hide()
+    $('#logout').show()
+    $('#address').append('<br>' + '<p>' + '내 계정주소 : ' + walletInstance.address + '</p>')
   },
 
   removeWallet: function () {
